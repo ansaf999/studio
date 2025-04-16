@@ -14,6 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { db } from "@/lib/firebase";
 import { collection, addDoc, onSnapshot, deleteDoc, doc } from "firebase/firestore";
@@ -85,6 +86,14 @@ export default function Home() {
 
     return () => unsubscribe();
   }, [ledgerDate]);
+
+  const handleDateChange = (newDate: Date | undefined) => {
+    setDate(newDate);
+    setDescription("");
+    setCategory("");
+    setAmount(null);
+    setType("expense");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +168,7 @@ export default function Home() {
                     <Calendar
                       mode="single"
                       selected={date}
-                      onSelect={setDate}
+                      onSelect={handleDateChange}
                       disabled={(date) =>
                         date > new Date()
                       }
@@ -178,21 +187,17 @@ export default function Home() {
                 />
               </div>
               <div>
-                <Label htmlFor="category">Category</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    id="category"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                  {isLoadingCategory ? (
-                    <Skeleton className="w-24 h-10" />
-                  ) : categorySuggestion ? (
-                    <Badge className="mt-1">{categorySuggestion}</Badge>
-                  ) : null}
-                </div>
-              </div>
+              <Label htmlFor="category">Category</Label>
+              <Select onValueChange={setCategory} defaultValue={category}>
+                <SelectTrigger className="w-[240px]">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Income">Income</SelectItem>
+                  <SelectItem value="Expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
               <div>
                 <Label htmlFor="amount">Amount</Label>
                 <Input
