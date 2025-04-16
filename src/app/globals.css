@@ -9,13 +9,13 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 220 18% 96%; /* Neutral grays */
+    --foreground: 240 10% 3.9%; /* Neutral grays */
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 220 5% 49%;
+    --primary: 210 20% 55%; /* Soft blues */
     --primary-foreground: 0 0% 100%;
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 220.9 39.3% 11%;
@@ -87,3 +87,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+

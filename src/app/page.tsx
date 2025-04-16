@@ -10,6 +10,13 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { suggestCategory } from "@/ai/flows/suggest-category";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+import { db } from "@/lib/firebase";
+import { collection, addDoc, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 
 const ExpenseColor = "text-red-500";
 const IncomeColor = "text-green-500";
@@ -23,44 +30,9 @@ interface LedgerEntry {
   type: "income" | "expense";
 }
 
-const defaultEntries: LedgerEntry[] = [
-  {
-    id: "1",
-    date: "2024-08-01",
-    description: "Salary",
-    category: "Income",
-    amount: 5000,
-    type: "income",
-  },
-  {
-    id: "2",
-    date: "2024-08-15",
-    description: "Rent",
-    category: "Housing",
-    amount: 2000,
-    type: "expense",
-  },
-  {
-    id: "3",
-    date: "2024-08-15",
-    description: "Groceries",
-    category: "Food",
-    amount: 500,
-    type: "expense",
-  },
-  {
-    id: "4",
-    date: "2024-08-01",
-    description: "Dividends",
-    category: "Investment",
-    amount: 7000,
-    type: "income",
-  },
-];
-
 export default function Home() {
-  const [entries, setEntries] = useState<LedgerEntry[]>(defaultEntries);
-  const [date, setDate] = useState("");
+  const [entries, setEntries] = useState<LedgerEntry[]>([]);
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState<number | null>(null);
@@ -91,28 +63,64 @@ export default function Home() {
     getCategorySuggestion();
   }, [description]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!date) return;
+
+    const formattedDate = format(date, 'yyyy-MM-dd');
+
+    const entriesCollection = collection(db, "entries");
+
+    const unsubscribe = onSnapshot(entriesCollection, (snapshot) => {
+      const fetchedEntries = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        amount: parseFloat(doc.data().amount),
+      }))
+        .filter(entry => entry.date === formattedDate)
+        .sort((a, b) => a.date.localeCompare(b.date)) as LedgerEntry[];
+      setEntries(fetchedEntries);
+    });
+
+    return () => unsubscribe();
+  }, [date]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date || !description || !category || amount === null) {
       alert("Please fill in all fields");
       return;
     }
 
-    const newEntry: LedgerEntry = {
-      id: Date.now().toString(),
-      date,
-      description,
-      category,
-      amount,
-      type,
-    };
+    const formattedDate = format(date, 'yyyy-MM-dd');
 
-    setEntries([...entries, newEntry]);
-    setDate("");
-    setDescription("");
-    setCategory("");
-    setAmount(null);
+    try {
+      const entriesCollection = collection(db, "entries");
+      await addDoc(entriesCollection, {
+        date: formattedDate,
+        description,
+        category,
+        amount,
+        type,
+      });
+
+      setDate(undefined);
+      setDescription("");
+      setCategory("");
+      setAmount(null);
+    } catch (error) {
+      console.error("Error adding document: ", error);
+    }
   };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const entryDoc = doc(db, "entries", id);
+      await deleteDoc(entryDoc);
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+    }
+  };
+
 
   const totalIncome = entries.filter((entry) => entry.type === "income").reduce((sum, entry) => sum + entry.amount, 0);
   const totalExpenses = entries.filter((entry) => entry.type === "expense").reduce((sum, entry) => sum + entry.amount, 0);
@@ -132,7 +140,31 @@ export default function Home() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <Label htmlFor="date">Date</Label>
-                <Input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      disabled={(date) =>
+                        date > new Date()
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label htmlFor="description">Description</Label>
@@ -194,6 +226,7 @@ export default function Home() {
                   <TableHead>Description</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -204,6 +237,11 @@ export default function Home() {
                     <TableCell>{entry.category}</TableCell>
                     <TableCell className={cn("text-right font-medium", entry.type === "income" ? IncomeColor : ExpenseColor)}>
                       {entry.type === "income" ? "+" : "-"}${entry.amount}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(entry.id)}>
+                        Delete
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -236,3 +274,4 @@ export default function Home() {
       </div>
   );
 }
+
