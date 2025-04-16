@@ -28,7 +28,6 @@ interface LedgerEntry {
   description: string;
   category: string;
   amount: number;
-  type: "income" | "expense";
 }
 
 export default function Home() {
@@ -37,7 +36,6 @@ export default function Home() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState<number | null>(null);
-  const [type, setType] = useState<"income" | "expense">("expense");
   const [categorySuggestion, setCategorySuggestion] = useState<string | null>(null);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
   const [ledgerDate, setLedgerDate] = useState<Date | undefined>(new Date());
@@ -80,7 +78,7 @@ export default function Home() {
         amount: parseFloat(doc.data().amount),
       }))
         .filter(entry => entry.date === formattedDate)
-        .sort((a, b) => a.date.localeCompare(b.date)) as LedgerEntry[];
+        .sort((a, b) => a.date.localeCompare(b.date));
       setEntries(fetchedEntries);
     });
 
@@ -92,7 +90,6 @@ export default function Home() {
     setDescription("");
     setCategory("");
     setAmount(null);
-    setType("expense");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,7 +108,6 @@ export default function Home() {
         description,
         category,
         amount,
-        type,
       });
 
       setDate(undefined);
@@ -133,8 +129,8 @@ export default function Home() {
   };
 
 
-  const totalIncome = entries.filter((entry) => entry.type === "income").reduce((sum, entry) => sum + entry.amount, 0);
-  const totalExpenses = entries.filter((entry) => entry.type === "expense").reduce((sum, entry) => sum + entry.amount, 0);
+  const totalIncome = entries.filter((entry) => entry.category === "Income").reduce((sum, entry) => sum + entry.amount, 0);
+  const totalExpenses = entries.filter((entry) => entry.category === "Expense").reduce((sum, entry) => sum + entry.amount, 0);
   const balance = totalIncome - totalExpenses;
 
   return (
@@ -207,13 +203,6 @@ export default function Home() {
                   onChange={(e) => setAmount(parseFloat(e.target.value))}
                 />
               </div>
-              <div>
-                <Label htmlFor="type">Type</Label>
-                <select id="type" value={type} onChange={(e) => setType(e.target.value as "income" | "expense")}>
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
-                </select>
-              </div>
               <Button type="submit">Add Entry</Button>
             </form>
           </CardContent>
@@ -270,8 +259,8 @@ export default function Home() {
                     <TableCell className="font-medium">{entry.date}</TableCell>
                     <TableCell>{entry.description}</TableCell>
                     <TableCell>{entry.category}</TableCell>
-                    <TableCell className={cn("text-right font-medium", entry.type === "income" ? IncomeColor : ExpenseColor)}>
-                      {entry.type === "income" ? "+" : "-"}${entry.amount}
+                    <TableCell className={cn("text-right font-medium", entry.category === "Income" ? IncomeColor : ExpenseColor)}>
+                      {entry.category === "Income" ? "+" : "-"}${entry.amount}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(entry.id)}>
