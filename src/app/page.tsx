@@ -39,6 +39,8 @@ export default function Home() {
   const [type, setType] = useState<"income" | "expense">("expense");
   const [categorySuggestion, setCategorySuggestion] = useState<string | null>(null);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  const [ledgerDate, setLedgerDate] = useState<Date | undefined>(new Date());
+
 
   useEffect(() => {
     const getCategorySuggestion = async () => {
@@ -64,9 +66,9 @@ export default function Home() {
   }, [description]);
 
   useEffect(() => {
-    if (!date) return;
+    if (!ledgerDate) return;
 
-    const formattedDate = format(date, 'yyyy-MM-dd');
+    const formattedDate = format(ledgerDate, 'yyyy-MM-dd');
 
     const entriesCollection = collection(db, "entries");
 
@@ -82,7 +84,7 @@ export default function Home() {
     });
 
     return () => unsubscribe();
-  }, [date]);
+  }, [ledgerDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +220,34 @@ export default function Home() {
             <CardDescription>View ledger entries</CardDescription>
           </CardHeader>
           <CardContent>
+          <div>
+                <Label htmlFor="ledgerDate">Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !ledgerDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {ledgerDate ? format(ledgerDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={ledgerDate}
+                      onSelect={setLedgerDate}
+                      disabled={(date) =>
+                        date > new Date()
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             <Table>
               <TableCaption>A list of your recent expenses.</TableCaption>
               <TableHeader>
@@ -274,4 +304,5 @@ export default function Home() {
       </div>
   );
 }
+
 
